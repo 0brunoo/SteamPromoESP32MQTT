@@ -3,6 +3,9 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
 void aoReceber(char *, byte *, unsigned int);
 
 void tratarJson(String);
@@ -15,11 +18,17 @@ const int PORTA = 1883;
 const char *TOPICO_SUB = "Senai/Mesa_do_CANO/Jean-Bruno/Comando";
 const char *TOPICO_PUB = "Senai/Mesa_do_CANO/Jean-Bruno/Status";
 
+bool mensagemNova = false;
+String mensagem;
+
 WiFiClient wifiClient;         //* Instância um cliente para que outros objetos utilizem a conexão WiFi
 PubSubClient mqtt(wifiClient); //* Instância um objeto para criar conexão com o broker
 
 void setup()
 {
+  lcd.init();
+  lcd.backlight();
+
   Serial.begin(115200);
   Serial.println();
 
@@ -62,40 +71,18 @@ void setup()
 void loop()
 {
   mqtt.loop();
-
-  static unsigned long ultimoEnvio = 0;
-  const unsigned long tempoEntreEnvios = 5000;
-
-  //*Dados
-  float temperatura = 50.0f;
-  bool estado = true;
-  unsigned timestamp = 1793796662;
-  String mensagemErro = "Sem erro";
-  int posicaoDisplay = 3;
-
-  if(millis() - ultimoEnvio > tempoEntreEnvios)
+  if(mensagemNova = true)
   {
-    Serial.printf("");
-    ultimoEnvio = millis();
-    
-    JsonDocument doc;
-    doc ["temperatura"] = temperatura;
-    doc ["estado"] = estado;
-    doc ["timestamp"] = timestamp;
-    doc ["mensagemErro"] = mensagemErro;
-    doc ["posicaoDisplay"] = posicaoDisplay;
-
-    String mensagem;
-    serializeJson(doc, mensagem);
-
-    mqtt.publish(TOPICO_PUB, mensagem.c_str());
-    Serial.printf("Mensagem a ser enviada no tópico %s: \n\r%s", TOPICO_PUB, mensagem.c_str());
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Mensagem: ");
+    lcd.setCursor(0,10);
+    mensagemNova = false;
   }
 }
 
 void aoReceber(char *topico, byte *payload, unsigned int tamanho)
 {
-  String mensagem;
   mensagem.reserve(tamanho); //* evita realocações enquanto a String cresce.
 
   for (unsigned int i = 0; i < tamanho; i++)
@@ -103,9 +90,9 @@ void aoReceber(char *topico, byte *payload, unsigned int tamanho)
     mensagem += (char)payload[i];
   }
 
-  Serial.printf("Mensagem Recebida no tópico: %s \n\r mensagem:\n\r %s\n\n\r", topico, mensagem.c_str());
+  // tratarJson(mensagem);
 
-  tratarJson(mensagem);
+  mensagemNova = true;
 }
 
 void tratarJson(String mensagem)
