@@ -8,7 +8,6 @@
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
-// --- Configurações de Rede e MQTT ---
 const char *SSID = "SENAI EDUCACIONAL";
 const char *SENHA = "info@134";
 
@@ -29,7 +28,86 @@ struct JogoPromocao {
 JogoPromocao primeiroJogo;
 bool temJogoCarregado = false;
 
-// --- Função para buscar apenas o 1º Jogo da CheapShark ---
+void buscarPrimeiroJogoSteam();
+void exibirJogoNoLCD();
+
+
+void setup() {
+  lcd.init();
+  lcd.backlight();
+  Serial.begin(115200);
+
+  WiFi.begin(SSID, SENHA);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    lcd.setCursor(0, 1);
+    lcd.print("     Conectando     ");
+    delay(500);
+
+    lcd.setCursor(0, 1);
+    lcd.print("    #Conectando#    ");
+    delay(500);
+
+    lcd.setCursor(0, 1);
+    lcd.print("   ##Conectando##   ");
+    delay(500);
+
+    lcd.setCursor(0, 1);
+    lcd.print("  ###Conectando###  ");
+    delay(500);
+
+    lcd.setCursor(0, 1);
+    lcd.print(" ####Conectando#### ");
+    delay(500);
+
+    lcd.setCursor(0, 1);
+    lcd.print("#####Conectando#####");
+    delay(500);
+
+    Serial.print("#");
+  }
+
+  // Confirmação de conexão no LCD
+  lcd.clear();
+  lcd.setCursor(0, 1);
+  lcd.print("==WIFI CONECTADO!===");
+  delay(1500);
+
+  // Conexão ao Broker MQTT
+  mqtt.setServer(BROKER, PORTA);
+  String id = "ESP32-CheapShark-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+  mqtt.connect(id.c_str());
+
+  // Executa a busca inicial e atualiza a tela
+  buscarPrimeiroJogoSteam();
+  exibirJogoNoLCD();
+}
+
+void loop() {
+  mqtt.loop();
+
+  static unsigned long ultimaAtualizacao = 0;
+  if (millis() - ultimaAtualizacao > 5000) {
+    ultimaAtualizacao = millis();
+
+    buscarPrimeiroJogoSteam();
+    exibirJogoNoLCD();
+
+    // Envia o status para o tópico MQTT se o jogo for carregado com sucesso
+    if (temJogoCarregado) {
+      JsonDocument doc;
+      doc["jogo"] = primeiroJogo.titulo;
+      doc["preco_de"] = primeiroJogo.precoNormal;
+      doc["preco_por"] = primeiroJogo.precoPromocao;
+      doc["desconto"] = primeiroJogo.desconto;
+
+      String mensagem;
+      serializeJson(doc, mensagem);
+      mqtt.publish(TOPICO_PUB, mensagem.c_str());
+    }
+  }
+}
+
 void buscarPrimeiroJogoSteam() {
   if (WiFi.status() != WL_CONNECTED) {
     lcd.clear();
@@ -118,7 +196,6 @@ void buscarPrimeiroJogoSteam() {
   http.end();
 }
 
-// --- Exibe o 1º Jogo no LCD ---
 void exibirJogoNoLCD() {
   lcd.clear();
 
@@ -151,83 +228,4 @@ void exibirJogoNoLCD() {
   lcd.print("Desconto: -");
   lcd.print(primeiroJogo.desconto);
   lcd.print("% OFF");
-}
-
-void setup() {
-  lcd.init();
-  lcd.backlight();
-  Serial.begin(115200);
-
-
-  WiFi.begin(SSID, SENHA);
-
-  // --- Sua Animação de Conexão no LCD ---
-  while (WiFi.status() != WL_CONNECTED) {
-    lcd.setCursor(0, 1);
-    lcd.print("     Conectando     ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("    #Conectando#    ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("   ##Conectando##   ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("  ###Conectando###  ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print(" ####Conectando#### ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("#####Conectando#####");
-    delay(500);
-
-    Serial.print("#");
-  }
-
-  // Confirmação de conexão no LCD
-  lcd.clear();
-  lcd.setCursor(0, 1);
-  lcd.print("==WIFI CONECTADO!===");
-  delay(1500);
-
-  // Conexão ao Broker MQTT
-  mqtt.setServer(BROKER, PORTA);
-  String id = "ESP32-CheapShark-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-  mqtt.connect(id.c_str());
-
-  // Executa a busca inicial e atualiza a tela
-  buscarPrimeiroJogoSteam();
-  exibirJogoNoLCD();
-}
-
-void loop() {
-  mqtt.loop();
-
-  // Atualiza a cada 5 minutos (300.000 ms)
-  static unsigned long ultimaAtualizacao = 0;
-  if (millis() - ultimaAtualizacao > 300000) {
-    ultimaAtualizacao = millis();
-
-    buscarPrimeiroJogoSteam();
-    exibirJogoNoLCD();
-
-    // Envia o status para o tópico MQTT se o jogo for carregado com sucesso
-    if (temJogoCarregado) {
-      JsonDocument doc;
-      doc["jogo"] = primeiroJogo.titulo;
-      doc["preco_de"] = primeiroJogo.precoNormal;
-      doc["preco_por"] = primeiroJogo.precoPromocao;
-      doc["desconto"] = primeiroJogo.desconto;
-
-      String mensagem;
-      serializeJson(doc, mensagem);
-      mqtt.publish(TOPICO_PUB, mensagem.c_str());
-    }
-  }
 }
