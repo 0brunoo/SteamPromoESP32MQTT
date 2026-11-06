@@ -1,9 +1,6 @@
-#include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include <LiquidCrystal_I2C.h>
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
@@ -13,219 +10,162 @@ const char *SENHA = "info@134";
 
 const char *BROKER = "broker.emqx.io";
 const int PORTA = 1883;
-const char *TOPICO_PUB = "Senai/Mesa_do_CANO/Jean-Bruno/Promocoes";
+const char *TOPICO_SUB = "Senai/Mesa_do_CANO/Jean-Bruno/Status";
+
+const int PINO_RGB = 48;
 
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
 
-struct JogoPromocao {
-  String titulo;
-  float precoNormal;
-  float precoPromocao;
-  int desconto;
-};
+void setup_wifi()
+{
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Conectando Wi-Fi...");
 
-JogoPromocao primeiroJogo;
-bool temJogoCarregado = false;
-
-void buscarPrimeiroJogoSteam();
-void exibirJogoNoLCD();
-
-
-void setup() {
-  lcd.init();
-  lcd.backlight();
-  Serial.begin(115200);
+  Serial.println();
+  Serial.print("Conectando-se à rede: ");
+  Serial.println(SSID);
 
   WiFi.begin(SSID, SENHA);
 
-  while (WiFi.status() != WL_CONNECTED) {
-    lcd.setCursor(0, 1);
-    lcd.print("     Conectando     ");
+  int pontos = 0;
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
+    Serial.print(".");
 
-    lcd.setCursor(0, 1);
-    lcd.print("    #Conectando#    ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("   ##Conectando##   ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("  ###Conectando###  ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print(" ####Conectando#### ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("#####Conectando#####");
-    delay(500);
-
-    Serial.print("#");
+    lcd.setCursor(pontos % 20, 1);
+    lcd.print(".");
+    pontos++;
   }
 
-  // Confirmação de conexão no LCD
-  lcd.clear();
-  lcd.setCursor(0, 1);
-  lcd.print("==WIFI CONECTADO!===");
-  delay(1500);
-
-  // Conexão ao Broker MQTT
-  mqtt.setServer(BROKER, PORTA);
-  String id = "ESP32-CheapShark-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-  mqtt.connect(id.c_str());
-
-  // Executa a busca inicial e atualiza a tela
-  buscarPrimeiroJogoSteam();
-  exibirJogoNoLCD();
-}
-
-void loop() {
-  mqtt.loop();
-
-  static unsigned long ultimaAtualizacao = 0;
-  if (millis() - ultimaAtualizacao > 5000) {
-    ultimaAtualizacao = millis();
-
-    buscarPrimeiroJogoSteam();
-    exibirJogoNoLCD();
-
-    // Envia o status para o tópico MQTT se o jogo for carregado com sucesso
-    if (temJogoCarregado) {
-      JsonDocument doc;
-      doc["jogo"] = primeiroJogo.titulo;
-      doc["preco_de"] = primeiroJogo.precoNormal;
-      doc["preco_por"] = primeiroJogo.precoPromocao;
-      doc["desconto"] = primeiroJogo.desconto;
-
-      String mensagem;
-      serializeJson(doc, mensagem);
-      mqtt.publish(TOPICO_PUB, mensagem.c_str());
-    }
-  }
-}
-
-void buscarPrimeiroJogoSteam() {
-  if (WiFi.status() != WL_CONNECTED) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Sem Conexao WiFi!");
-    return;
-  }
+  Serial.println("\nWiFi conectado!");
 
   lcd.clear();
-    lcd.setCursor(0, 1);
-    lcd.print("#####Consultando####");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print(" ####Consultando### ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("  ###Consultando##  ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("   ##Consultando#   ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("    #Consultando    ");
-    delay(500);
-
-    lcd.setCursor(0, 1);
-    lcd.print("     Consultando    ");
-    delay(500);
-
-
-    lcd.setCursor(0, 1);
-    lcd.print("=====Consultado!====");
-    delay(500);
-
-  lcd.setCursor(0, 2);
-  lcd.print(" CheapShark (Steam) ");
-  delay(500);
-
-  WiFiClientSecure client;
-  client.setInsecure(); // Ignora certificados SSL para poupar memória RAM
-
-  HTTPClient http;
-  // pageSize=1 garante que a API responda apenas com o 1º jogo com maior desconto
-  String url = "https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Savings&pageSize=1";
-
-  http.begin(client, url);
-  http.addHeader("User-Agent", "ESP32"); // Evita que o servidor bloqueie o ESP32
-
-  int httpCode = http.GET();
-
-  if (httpCode == HTTP_CODE_OK) {
-    String payload = http.getString(); // Pega a resposta completa em texto
-
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-
-    if (!error) {
-      // Como a API retorna um Array JSON [ {...} ], acessamos o índice [0]
-      JsonObject deal = doc[0];
-
-      if (!deal.isNull()) {
-        primeiroJogo.titulo = deal["title"].as<String>();
-        primeiroJogo.precoNormal = deal["normalPrice"].as<float>();
-        primeiroJogo.precoPromocao = deal["salePrice"].as<float>();
-        primeiroJogo.desconto = (int)deal["savings"].as<float>();
-
-        temJogoCarregado = true;
-        Serial.println("Jogo encontrado: " + primeiroJogo.titulo);
-      } else {
-        Serial.println("Erro: Objeto do jogo veio vazio.");
-        temJogoCarregado = false;
-      }
-    } else {
-      Serial.print("Erro ao processar JSON: ");
-      Serial.println(error.c_str());
-      temJogoCarregado = false;
-    }
-  } else {
-    Serial.printf("Erro HTTP na API: %d\n", httpCode);
-    temJogoCarregado = false;
-  }
-  http.end();
-}
-
-void exibirJogoNoLCD() {
-  lcd.clear();
-
-  if (!temJogoCarregado) {
-    lcd.setCursor(0, 0);
-    lcd.print("Nenhuma oferta");
-    lcd.setCursor(0, 1);
-    lcd.print("encontrada!");
-    return;
-  }
-
-  // Linha 1: Cabeçalho
   lcd.setCursor(0, 0);
-  lcd.print("OFERTA DO DIA STEAM");
+  lcd.print("Wi-Fi Conectado!");
+  delay(1000);
+}
 
-  // Linha 2: Nome do Jogo (Ajustado para no máximo 20 caracteres)
+void reconectar()
+{
+  while (!mqtt.connected())
+  {
+    Serial.print("Tentando conexão MQTT...");
+    lcd.setCursor(0, 1);
+    lcd.print("Conectando Broker...");
+
+    String clientId = "ESP32-Receptor-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+
+    if (mqtt.connect(clientId.c_str()))
+    {
+      Serial.println("Conectado ao Broker MQTT!");
+
+      lcd.setCursor(0, 1);
+      lcd.print("Broker Conectado!   ");
+      delay(1000);
+
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Aguardando ofertas...");
+
+      mqtt.subscribe(TOPICO_SUB);
+    }
+    else
+    {
+      Serial.print("Falha, rc=");
+      Serial.print(mqtt.state());
+      Serial.println(" Tentando novamente...");
+
+      lcd.setCursor(0, 1);
+      lcd.print("Falha MQTT. Retentando");
+      delay(5000);
+    }
+  }
+}
+
+void callback(char *topic, byte *payload, unsigned int length)
+{
+  Serial.println("-----------------------");
+  Serial.println("Nova mensagem recebida!");
+
+  String mensagem;
+  for (int i = 0; i < length; i++)
+  {
+    mensagem += (char)payload[i];
+  }
+  Serial.println("JSON: " + mensagem);
+
+  JsonDocument doc;
+  DeserializationError erro = deserializeJson(doc, mensagem);
+
+  if (erro)
+  {
+    Serial.print("Falha ao analisar o JSON: ");
+    Serial.println(erro.c_str());
+    return;
+  }
+
+  String jogo = doc["jogo"];
+  float precoPor = doc["preco_por"];
+
+  Serial.print("Jogo analisado: ");
+  Serial.println(jogo);
+  Serial.print("Preço Promocional: $");
+  Serial.println(precoPor);
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("OFERTA RECEBIDA!");
+
   lcd.setCursor(0, 1);
-  String nome = primeiroJogo.titulo.length() > 20 ? primeiroJogo.titulo.substring(0, 20) : primeiroJogo.titulo;
-  lcd.print(nome);
+  String nomeExibicao = jogo.length() > 20 ? jogo.substring(0, 20) : jogo;
+  lcd.print(nomeExibicao);
 
-  // Linha 3: Preço de / por
   lcd.setCursor(0, 2);
-  lcd.print("De:$");
-  lcd.print(primeiroJogo.precoNormal, 2);
-  lcd.print(" Por:$");
-  lcd.print(primeiroJogo.precoPromocao, 2);
+  lcd.print("Preco atual: $");
+  lcd.print(precoPor, 2);
 
-  // Linha 4: Porcentagem de Desconto
   lcd.setCursor(0, 3);
-  lcd.print("Desconto: -");
-  lcd.print(primeiroJogo.desconto);
-  lcd.print("% OFF");
+  if (precoPor < 1.00)
+  {
+    Serial.println("LED VERDE");
+    rgbLedWrite(PINO_RGB, 0, 255, 0);
+    lcd.print("Status: MUITO BARATO");
+  }
+  else
+  {
+    Serial.println("LED VERMELHO");
+    rgbLedWrite(PINO_RGB, 255, 0, 0);
+    lcd.print("Status: PRECO NORMAL");
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Iniciando...");
+
+  rgbLedWrite(PINO_RGB, 0, 0, 0);
+
+  delay(1000);
+
+  setup_wifi();
+
+  mqtt.setServer(BROKER, PORTA);
+  mqtt.setCallback(callback);
+}
+
+void loop()
+{
+  if (!mqtt.connected())
+  {
+    reconectar();
+  }
+  mqtt.loop();
 }
