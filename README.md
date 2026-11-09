@@ -1,4 +1,4 @@
-##🎮 SteamPromo - ESP32 & MQTT
+# 🎮 SteamPromo - ESP32 & MQTT
 Um projeto maneiro de Internet das Coisas (IoT) desenvolvido com ESP32 que busca as melhores promoções de jogos da Steam e transmite os dados via protocolo MQTT.
 
 O sistema utiliza a API do CheapShark para encontrar os descontos e conta com dois módulos principais: um que busca e publica as ofertas, e outro que recebe as mensagens e sinaliza visualmente se o jogo está com um preço imperdível!
