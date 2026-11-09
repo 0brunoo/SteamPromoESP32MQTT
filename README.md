@@ -73,27 +73,31 @@ Abra na Arduino IDE (ou VS Code com PlatformIO).
 - Configure as credenciais:
 Altere as variáveis de rede e MQTT no início de ambos os códigos para o seu ambiente:
 
+<fieldset>
 <p>C++</p>
 <p>const char *SSID = "SUA_REDE_WIFI";</p>
 <p>const char *SENHA = "SUA_SENHA";</p>
 <p>const char *BROKER = "broker.emqx.io"; // Ou outro de sua preferência</p>
 <p>const char *TOPICO_PUB = "Seu/Topico/Personalizado";</p>
 <p>Faça o Upload do código do Receptor no primeiro ESP32 e do código do Buscador no segundo ESP32.</p>
+</fieldset>
 
 Pressione o botão no ESP32 Buscador para começar a minerar as ofertas! 💸
 
 ## 📡 Payload JSON
 Exemplo do dado que trafega pelo Broker MQTT:
 
-JSON
-{
-  "jogo": "Left 4 Dead 2",
-  "preco_de": 9.99,
-  "preco_por": 0.99,
-  "desconto": 90,
-  "posicao": 1
-}
+<fieldset>
+<p>JSON</p>
+<p>{</p>
+  <p>"jogo": "Left 4 Dead 2",</p>
+  <p>"preco_de": 9.99,</p>
+  <p>"preco_por": 0.99,</p>
+  <p>"desconto": 90,</p>
+  <p>"posicao": 1</p>
+<p>}/</p>
+</fieldset>
 ## 👨‍💻 Autor
-Desenvolvido por Jean-Bruno (como visto no tópico MQTT!) e equipe do Senai. Sinta-se à vontade para fazer um fork, abrir issues ou mandar pull requests com melhorias!
+Desenvolvido por Jean Oliveira e Bruno Santos(como visto no tópico MQTT!) e equipe do Senai. Sinta-se à vontade para fazer um fork, abrir issues ou mandar pull requests com melhorias!
 
 Disclaimer: Este projeto foi criado com fins educacionais para explorar os conceitos de IoT, HTTPs e MQTT.
