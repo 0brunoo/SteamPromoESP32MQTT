@@ -73,12 +73,12 @@ Abra na Arduino IDE (ou VS Code com PlatformIO).
 - Configure as credenciais:
 Altere as variáveis de rede e MQTT no início de ambos os códigos para o seu ambiente:
 
-C++
-const char *SSID = "SUA_REDE_WIFI";
-const char *SENHA = "SUA_SENHA";
-const char *BROKER = "broker.emqx.io"; // Ou outro de sua preferência
-const char *TOPICO_PUB = "Seu/Topico/Personalizado";
-Faça o Upload do código do Receptor no primeiro ESP32 e do código do Buscador no segundo ESP32.
+<p>C++</p>
+<p>const char *SSID = "SUA_REDE_WIFI";</p>
+<p>const char *SENHA = "SUA_SENHA";</p>
+<p>const char *BROKER = "broker.emqx.io"; // Ou outro de sua preferência</p>
+<p>const char *TOPICO_PUB = "Seu/Topico/Personalizado";</p>
+<p>Faça o Upload do código do Receptor no primeiro ESP32 e do código do Buscador no segundo ESP32.</p>
 
 Pressione o botão no ESP32 Buscador para começar a minerar as ofertas! 💸
 
