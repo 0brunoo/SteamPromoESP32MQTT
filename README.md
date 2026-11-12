@@ -95,8 +95,9 @@ Exemplo do dado que trafega pelo Broker MQTT:
   <p>"preco_por": 0.99,</p>
   <p>"desconto": 90,</p>
   <p>"posicao": 1</p>
-<p>}/</p>
+<p>}</p>
 </fieldset>
+
 ## 👨‍💻 Autor
 Desenvolvido por Jean Oliveira e Bruno Santos(como visto no tópico MQTT!) e equipe do Senai. Sinta-se à vontade para fazer um fork, abrir issues ou mandar pull requests com melhorias!
 
